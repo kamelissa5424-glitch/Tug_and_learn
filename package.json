@@ -1,0 +1,17 @@
+{
+  "name": "tug-and-learn-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Two-screen classroom tug-of-war learning game with real-time rooms.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
