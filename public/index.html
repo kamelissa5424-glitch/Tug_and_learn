@@ -1,1 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tug & Learn</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#eef4fb;--ink:#172033;--muted:#667085;--panel:#fff;--line:#dbe4ef;--blue:#3f82f1;--red:#ed5b5b;--green:#2e9f50;--yellow:#ffd45c}
+body{margin:0;background:linear-gradient(135deg,#eef5ff,#f8fbff);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.app{max-width:1180px;margin:auto;padding:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.logo{font-size:31px;font-weight:900}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:13px;padding:11px 16px;background:var(--ink);color:white;font-weight:800}
+.btn.secondary{background:#e8eef7;color:var(--ink)}
+.btn.blue{background:var(--blue)}.btn.red{background:var(--red)}
+.hidden{display:none!important}
+.menu-title{text-align:center;margin:5px 0 20px}.menu-title h2{margin:0 0 5px;font-size:28px}.menu-title p{margin:0;color:var(--muted)}
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.card{background:#fff;border:2px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 5px 20px #17203312;transition:.18s}
+.card:hover{transform:translateY(-3px);box-shadow:0 10px 26px #1720331c}
+.card .icon{font-size:46px}.card h3{margin:9px 0 5px}.card p{margin:0;color:var(--muted);line-height:1.4}
+.panel{background:#fff;border:2px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 5px 20px #17203312}
+.setup{max-width:680px;margin:auto;text-align:center}.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:20px 0}.level{background:#e9eff7;color:var(--ink)}.level.selected{background:var(--ink);color:#fff}
+.muted{color:var(--muted)}.small{font-size:13px}
+.scoregrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.team{background:#fff;border-radius:18px;padding:13px;text-align:center;box-shadow:0 5px 18px #17203312}.team.blue{border:4px solid var(--blue)}.team.red{border:4px solid var(--red)}
+.team-name{font-weight:900;font-size:18px}.score{font-size:40px;font-weight:900}.lead{font-size:13px;color:var(--muted)}
+.gamepanel{margin-top:15px;background:#fff;border-radius:24px;padding:18px;box-shadow:0 5px 20px #17203312}
+.classic-layout{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:16px;align-items:center}
+.question-box{background:#f7faff;border:2px solid var(--line);border-radius:18px;padding:16px;text-align:center}
+.question-box h3{margin:0 0 8px}.prompt{font-size:18px;color:var(--muted)}.question{font-size:48px;font-weight:900;margin:13px 0}
+.shape-display{height:120px;display:flex;align-items:center;justify-content:center;margin:8px 0 16px}
+.shape{width:92px;height:92px;display:block}
+.shape.circle{border-radius:50%;background:#5b8ff9}
+.shape.square{background:#f6a43a;border-radius:10px}
+.shape.rectangle{width:125px;height:82px;background:#61b96d;border-radius:9px}
+.shape.oval{width:125px;height:78px;border-radius:50%;background:#9b72d8}
+.shape.triangle{width:0;height:0;border-left:52px solid transparent;border-right:52px solid transparent;border-bottom:92px solid #ef6262}
+.shape.star{width:100px;height:100px;background:#ffd45c;clip-path:polygon(50% 3%,61% 35%,96% 35%,68% 55%,79% 91%,50% 69%,21% 91%,32% 55%,4% 35%,39% 35%)}
+.color-swatch{width:105px;height:105px;border-radius:50%;border:5px solid #fff;box-shadow:0 4px 12px #17203330}
+.color-red{background:#ed5b5b}.color-blue{background:#3f82f1}.color-green{background:#43ad61}.color-yellow{background:#ffd45c}
+.character{filter:drop-shadow(0 5px 3px #17203320)}
+.character .head{box-shadow:inset -4px -3px 0 #d78d62}
+.character .head:before{content:"";position:absolute;width:5px;height:7px;border-radius:50%;background:#172033;left:7px;top:11px;box-shadow:12px 0 0 #172033}
+.character .head:after{content:"";position:absolute;width:31px;height:13px;border-radius:50% 50% 25% 25%;background:#26344a;left:-3px;top:-5px;transform:rotate(-8deg)}
+.character .body{box-shadow:inset 7px 0 0 #ffffff25}
+.character .body:after{content:"";position:absolute;width:11px;height:30px;border-radius:5px;background:#ffffff35;left:15px;top:8px}
+.character .leg:after{content:"";position:absolute;width:22px;height:9px;border-radius:8px;background:#182536;left:-5px;bottom:-2px;transform:rotate(-8deg)}
+.pull1{animation:pullLeft .68s ease-in-out infinite alternate}.pull2{animation:pullRight .68s ease-in-out infinite alternate}
+@keyframes pullLeft{0%{transform:translate(0,0) rotate(-1deg)}100%{transform:translate(11px,-2px) rotate(3deg)}}
+@keyframes pullRight{0%{transform:translate(0,0) rotate(1deg)}100%{transform:translate(-11px,-2px) rotate(-3deg)}}
 
+.question svg{width:180px;max-width:100%;height:125px;display:block;margin:auto}.answers{display:grid;grid-template-columns:1fr 1fr;gap:9px}.answer{min-height:48px;border:2px solid var(--line);background:#edf3fa;border-radius:12px;font-weight:900;font-size:22px;color:var(--ink)}.answer:hover:not(:disabled){background:#dfeaf8}.answer.correct{background:#b9efc5;border-color:var(--green)}.answer.wrong{background:#ffc3c3;border-color:#e14a4a}.answer:disabled{cursor:default}
+.feedback{min-height:27px;margin-top:9px;font-weight:900}
+.rope-stage{position:relative;height:330px;border-radius:20px;background:linear-gradient(#f9fcff 0 72%,#e7e0d4 72%);overflow:hidden;border:2px solid #e2e8f0}
+.rope-line{position:absolute;left:8%;right:8%;top:150px;height:10px;background:#9a663d;border-radius:8px;transform-origin:center;transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+.rope-knot{position:absolute;top:139px;left:50%;width:7px;height:34px;background:#b33b32;transform:translateX(-50%);transition:left .55s cubic-bezier(.2,.8,.2,1);z-index:4}
+.marker{position:absolute;top:116px;left:50%;transform:translateX(-50%);font-size:29px;transition:left .55s cubic-bezier(.2,.8,.2,1);z-index:5}
+.centerline{position:absolute;top:20px;bottom:14px;left:50%;width:0;border-left:7px solid #111;z-index:6}
+.character{position:absolute;top:91px;width:88px;height:132px;transition:left .55s cubic-bezier(.2,.8,.2,1),right .55s cubic-bezier(.2,.8,.2,1),transform .45s ease;z-index:3}
+.character.left1{left:12%}.character.left2{left:25%}.character.right1{right:25%}.character.right2{right:12%}
+.head{position:absolute;width:31px;height:31px;border-radius:50%;background:#f0b07d;top:0;left:24px;border:2px solid #172033}
+.body{position:absolute;width:50px;height:60px;border-radius:18px 18px 8px 8px;top:26px;left:17px;background:#3487ee}
+.redchar .body{background:#ef625f}
+.arm{position:absolute;width:42px;height:8px;border-radius:7px;top:47px;background:#f0b07d;transform-origin:5px 50%;z-index:2}
+.leftchar .arm.a1{left:44px;transform:rotate(18deg)}.leftchar .arm.a2{left:3px;transform:rotate(150deg)}
+.redchar .arm.a1{left:4px;transform:rotate(160deg)}.redchar .arm.a2{left:44px;transform:rotate(15deg)}
+.leg{position:absolute;width:11px;height:47px;background:#24364e;top:75px;border-radius:7px}.leg.l{left:22px;transform:rotate(15deg)}.leg.r{left:45px;transform:rotate(-15deg)}
+.hands{position:absolute;top:48px;width:15px;height:15px;border-radius:50%;background:#f0b07d;z-index:3}
+.leftchar .hands{left:68px}.redchar .hands{right:68px}
+.pull1{animation:pullLeft .75s ease-in-out infinite alternate}.pull2{animation:pullRight .75s ease-in-out infinite alternate}
+@keyframes pullLeft{to{transform:translateX(9px) rotate(2deg)}}@keyframes pullRight{to{transform:translateX(-9px) rotate(-2deg)}}
+.meter{position:absolute;left:10%;right:10%;bottom:17px;height:13px;background:#dce3ec;border-radius:20px;overflow:hidden}.meter-fill{height:100%;width:50%;background:linear-gradient(90deg,var(--blue),#b5c8ff 48%,#ffb3b3 52%,var(--red));transition:width .55s ease}
+.stage-label{position:absolute;bottom:39px;left:0;right:0;text-align:center;font-size:12px;color:#6c7685;font-weight:800}
+.custom-form{display:grid;gap:12px}.custom-form input,.custom-form textarea,.custom-form select{width:100%;padding:12px;border:2px solid var(--line);border-radius:12px}.custom-form textarea{min-height:100px;resize:vertical}
+.custom-list{display:grid;gap:8px;margin-top:15px}.custom-item{display:flex;justify-content:space-between;gap:8px;align-items:center;background:#f6f9fd;border:1px solid var(--line);padding:9px;border-radius:10px}
+.result{text-align:center}.result-icon{font-size:80px}.result h2{font-size:40px;margin:8px}.result p{color:var(--muted);font-size:19px}
+.toggle{display:flex;align-items:center;gap:7px;background:#e8eef7;border-radius:12px;padding:8px 11px;font-weight:800}.toggle input{width:18px;height:18px}
+@media(max-width:900px){.classic-layout,@media(max-width:600px){.menu-grid{grid-template-columns:1fr}.levels{grid-template-columns:1fr 1fr}.scoregrid{grid-template-columns:1fr 1fr}.classic-layout{grid-template-columns:1fr}.question{font-size:40px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">🪢 Tug & Learn</div>
+  <div class="actions">
+    <label class="toggle">🔊 <input id="soundToggle" type="checkbox" checked> Sound</label>
+    <button class="btn secondary" id="homeBtn">🏠 Games</button>
+  </div>
+</header>
+
+<section id="home">
+  <div class="menu-title"><h2>Choose a Game</h2><p>Learning + teamwork + a real tug-of-war.</p></div>
+  <div class="menu-grid">
+    <button class="card" data-game="letters"><div class="icon">🔤</div><h3>Starting Letter</h3><p>What letter does the word start with?</p></button>
+    <button class="card" data-game="reading"><div class="icon">📖</div><h3>Reading</h3><p>Recognize simple words.</p></button>
+    <button class="card" data-game="spelling"><div class="icon">✏️</div><h3>Spelling</h3><p>Choose the missing letter.</p></button>
+    <button class="card" data-game="math"><div class="icon">➕</div><h3>Math</h3><p>Addition, subtraction, multiplication.</p></button>
+    <button class="card" data-game="numbers"><div class="icon">🔢</div><h3>Numbers</h3><p>Number recognition and counting.</p></button>
+    <button class="card" data-game="shapes"><div class="icon">🔺</div><h3>Shapes & Colors</h3><p>Identify common shapes and colors.</p></button>
+    <button class="card" data-game="custom"><div class="icon">👩‍🏫</div><h3>Teacher / Custom</h3><p>Create your own questions and answers.</p></button>
+
+    <button class="card" data-game="online"><div class="icon">📱↔️📱</div><h3>Two-Screen Online</h3><p>Blue team on one phone, Red team on another.</p></button>
+
+  </div>
+</section>
+
+<section id="setup" class="hidden">
+  <div class="panel setup">
+    <h2 id="setupTitle"></h2>
+    <p id="setupDesc" class="muted"></p>
+    <div class="levels">
+      <button class="btn level selected" data-level="1">Level 1</button>
+      <button class="btn level" data-level="2">Level 2</button>
+      <button class="btn level" data-level="3">Level 3</button>
+      <button class="btn level" data-level="4">Level 4</button>
+    </div>
+    <button class="btn" id="startClassicBtn">▶ Start Game</button>
+    <p class="small muted">All regular games now use the same winning rule: a team wins when it is <b>5 correct answers ahead</b> of the other team.</p>
+  </div>
+</section>
+
+<section id="custom" class="hidden">
+  <div class="panel">
+    <h2>👩‍🏫 Teacher / Custom Questions</h2>
+    <p class="muted">Create your own questions. They stay available during this session and can be used in the same tug-of-war game.</p>
+    <form class="custom-form" id="customForm">
+      <input id="customQuestion" required placeholder="Question, e.g. What is 5 + 7?">
+      <input id="customA" required placeholder="Correct answer">
+      <div class="answers"><input id="customB" required placeholder="Wrong answer 1"><input id="customC" required placeholder="Wrong answer 2"><input id="customD" required placeholder="Wrong answer 3"></div>
+      <button class="btn" type="submit">➕ Add Question</button>
+    </form>
+    <div id="customList" class="custom-list"></div>
+    <div style="margin-top:18px;text-align:center"><button class="btn blue" id="playCustomBtn">▶ Play Custom Game</button></div>
+  </div>
+</section>
+
+
+<section id="online" class="hidden">
+  <div class="panel setup">
+    <h2>📱↔️📱 Two-Screen Online Game</h2>
+    <p class="muted">One phone creates the room for 🔵 Blue. The other joins as 🔴 Red. No third screen is required.</p>
+    <div id="onlineModeButtons" class="actions" style="justify-content:center;margin:16px 0">
+      <button class="btn blue" id="createRoomBtn" type="button">Create Room</button>
+      <button class="btn red" id="joinRoomBtn" type="button">Join Room</button>
+    </div>
+    <div id="onlineCreate" class="hidden">
+      <h3>Blue Team</h3>
+      <p>Choose the game on this phone, then share the room code with the Red team.</p>
+      <select id="onlineGameSelect" style="padding:12px;border:2px solid #dbe4ef;border-radius:12px;width:100%;margin-bottom:10px">
+        <option value="letters">Starting Letter</option>
+        <option value="reading">Reading</option>
+        <option value="spelling">Spelling</option>
+        <option value="math">Math</option>
+        <option value="numbers">Numbers</option>
+        <option value="shapes">Shapes & Colors</option>
+      </select>
+      <div class="levels" id="onlineLevels">
+        <button class="btn level selected" data-online-level="1" type="button">Level 1</button>
+        <button class="btn level" data-online-level="2" type="button">Level 2</button>
+        <button class="btn level" data-online-level="3" type="button">Level 3</button>
+        <button class="btn level" data-online-level="4" type="button">Level 4</button>
+      </div>
+      <button class="btn" id="createOnlineBtn" type="button">Create Online Room</button>
+      <div id="createdRoom" class="small muted" style="margin-top:12px"></div>
+    </div>
+    <div id="onlineJoin" class="hidden">
+      <h3>Red Team</h3>
+      <input id="roomCodeInput" placeholder="Enter room code" style="width:100%;padding:12px;border:2px solid #dbe4ef;border-radius:12px;text-transform:uppercase">
+      <button class="btn" id="joinOnlineBtn" type="button" style="margin-top:10px">Join Online Room</button>
+    </div>
+    <div id="onlineStatus" class="small muted" style="margin-top:14px">Ready.</div>
+  </div>
+</section>
+
+<section id="classic" class="hidden">
+  <div class="scoregrid">
+    <div class="team blue"><div class="team-name">🔵 Team Blue</div><div class="score" id="classicBlue">0</div><div class="lead" id="blueLead">Tie</div></div>
+    <div class="team red"><div class="team-name">🔴 Team Red</div><div class="score" id="classicRed">0</div><div class="lead" id="redLead">Tie</div></div>
+  </div>
+  <div class="gamepanel classic-layout">
+    <div class="question-box">
+      <h3>🔵 Team Blue</h3><div class="prompt" id="bluePrompt">Waiting...</div><div class="question" id="blueQuestion"></div><div class="answers" id="blueAnswers"></div><div class="feedback" id="blueFeedback"></div>
+    </div>
+    <div class="rope-stage">
+      <div class="centerline"></div><div class="rope-line" id="classicRope"></div><div class="rope-knot" id="classicKnot"></div><div class="marker" id="classicMarker">🚩</div>
+      <div class="character leftchar left1 pull1"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character leftchar left2 pull1"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character redchar rightchar right1 pull2"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character redchar rightchar right2 pull2"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="stage-label" id="stageLabel">The rope moves with the score.</div><div class="meter"><div class="meter-fill" id="classicMeter"></div></div>
+    </div>
+    <div class="question-box">
+      <h3>🔴 Team Red</h3><div class="prompt" id="redPrompt">Waiting...</div><div class="question" id="redQuestion"></div><div class="answers" id="redAnswers"></div><div class="feedback" id="redFeedback"></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="onlineGame" class="hidden">
+  <div class="scoregrid">
+    <div class="team blue"><div class="team-name">🔵 Team Blue</div><div class="score" id="onlineBlueScore">0</div><div class="lead" id="onlineBlueLead">Tie</div></div>
+    <div class="team red"><div class="team-name">🔴 Team Red</div><div class="score" id="onlineRedScore">0</div><div class="lead" id="onlineRedLead">Tie</div></div>
+  </div>
+  <div class="gamepanel classic-layout">
+    <div class="question-box" id="onlineMyQuestionBox">
+      <h3 id="onlineTeamTitle">Your Team</h3>
+      <div class="prompt" id="onlinePrompt"></div>
+      <div class="question" id="onlineQuestion"></div>
+      <div class="answers" id="onlineAnswers"></div>
+      <div class="feedback" id="onlineFeedback"></div>
+    </div>
+    <div class="rope-stage">
+      <div class="centerline"></div>
+      <div class="rope-line" id="onlineRope"></div>
+      <div class="rope-knot" id="onlineKnot"></div>
+      <div class="marker" id="onlineMarker">🚩</div>
+      <div class="character leftchar left1 pull1" id="onlineBlueChar1"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character leftchar left2 pull1" id="onlineBlueChar2"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character redchar rightchar right1 pull2" id="onlineRedChar1"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="character redchar rightchar right2 pull2" id="onlineRedChar2"><div class="head"></div><div class="body"></div><div class="arm a1"></div><div class="arm a2"></div><div class="hands"></div><div class="leg l"></div><div class="leg r"></div></div>
+      <div class="stage-label">The teams move toward the team with more correct answers.</div>
+      <div class="meter"><div class="meter-fill" id="onlineMeter"></div></div>
+    </div>
+    <div class="question-box">
+      <h3>Opponent</h3>
+      <div class="prompt" id="onlineOpponentStatus">Waiting for the other team...</div>
+      <div class="question" style="font-size:26px">📱</div>
+      <div class="feedback" id="onlineOpponentFeedback"></div>
+    </div>
+  </div>
+</section>
+
+<section id="result" class="hidden">
+  <div class="panel result"><div class="result-icon">🏆</div><h2 id="resultTitle"></h2><p id="resultText"></p><button class="btn" id="resultHome">🏠 Back to Games</button></div>
+</section>
+</div>
+
+<script>
+"use strict";
+const BANK={
+letters:[["APPLE","A"],["BALL","B"],["CAT","C"],["DOG","D"],["ELEPHANT","E"],["FISH","F"],["GIRAFFE","G"],["HOUSE","H"],["ICE","I"],["JACKET","J"],["KITE","K"],["LION","L"],["MOON","M"],["NOSE","N"],["ORANGE","O"],["PIG","P"],["QUEEN","Q"],["RAIN","R"],["SUN","S"],["TREE","T"],["UMBRELLA","U"],["VAN","V"],["WATER","W"],["YELLOW","Y"],["ZEBRA","Z"],["CAR","C"],["FROG","F"],["MILK","M"],["STAR","S"],["BOOK","B"],["FIRE","F"],["GOAT","G"],["HAND","H"],["JAM","J"],["KEY","K"],["LEMON","L"],["MONKEY","M"],["PANDA","P"],["ROBOT","R"],["TURTLE","T"]],
+reading:[["CAT","CAT"],["DOG","DOG"],["SUN","SUN"],["BUS","BUS"],["FISH","FISH"],["BALL","BALL"],["CUP","CUP"],["HAT","HAT"],["CAR","CAR"],["BED","BED"],["MILK","MILK"],["BOOK","BOOK"]],
+spelling:[["C_T","A"],["D_G","O"],["S_N","U"],["B_LL","A"],["F_SH","I"],["H_T","A"],["P_N","E"],["C_P","U"],["B_D","E"],["S_N","U"],["B_G","A"]],
+shapes:[["CIRCLE","CIRCLE"],["SQUARE","SQUARE"],["TRIANGLE","TRIANGLE"],["STAR","STAR"],["RECTANGLE","RECTANGLE"],["OVAL","OVAL"],["RED","RED"],["BLUE","BLUE"],["GREEN","GREEN"],["YELLOW","YELLOW"]]
+};
+let selectedGame="letters",level=1,customQuestions=[];
+let classicBlue=0,classicRed=0,classicQuestions={blue:null,red:null},classicAnswered={blue:false,red:false},classicFinished=false;
+
+const $=id=>document.getElementById(id);
+function show(id){["home","setup","custom","online","onlineGame","classic","result"].forEach(x=>$(x).classList.add("hidden"));$(id).classList.remove("hidden")}
+function shuffle(a){const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+/* ---------------- TWO-SCREEN ONLINE MODE ---------------- */
+let onlineSocket=null, onlineRole=null, onlineRoom=null, onlineGameType="letters", onlineLevel=1;
+let onlineBlue=0, onlineRed=0, onlineFinished=false, onlineQuestionIndex=0, onlineCurrent=null;
+
+function onlineShowStatus(msg){ $("onlineStatus").textContent=msg; }
+
+function openOnlineMenu(){
+  show("online");
+  $("onlineCreate").classList.add("hidden");
+  $("onlineJoin").classList.add("hidden");
+  $("createdRoom").textContent="";
+  onlineShowStatus("Choose Create Room on the Blue phone or Join Room on the Red phone.");
+}
+
+function setupOnlineCreate(){
+  $("onlineCreate").classList.remove("hidden");
+  $("onlineJoin").classList.add("hidden");
+  onlineShowStatus("Blue team creates the room.");
+}
+
+function setupOnlineJoin(){
+  $("onlineJoin").classList.remove("hidden");
+  $("onlineCreate").classList.add("hidden");
+  onlineShowStatus("Red team enters the room code.");
+}
+
+function ensureOnlineSocket(){
+  if(typeof io === "undefined"){
+    onlineShowStatus("The online connection could not load. Please open the website from its hosted HTTPS link.");
+    return null;
+  }
+  if(!onlineSocket){
+    onlineSocket=io({transports:["websocket","polling"]});
+    onlineSocket.on("connect",()=>{
+      if(onlineRole) onlineShowStatus("Connected to the game server.");
+    });
+    onlineSocket.on("connect_error",()=>onlineShowStatus("Could not connect to the online server. Please try again."));
+    onlineSocket.on("room_created",data=>{
+      onlineRoom=data.code;
+      $("createdRoom").textContent="Room code: " + data.code + " — enter this code on the Red phone.";
+      onlineShowStatus("Waiting for Red team to join...");
+    });
+    onlineSocket.on("room_joined",data=>{
+      onlineRoom=data.code;
+      onlineShowStatus("Connected! Waiting for Blue team to start...");
+    });
+    onlineSocket.on("opponent_joined",()=>{
+      onlineShowStatus("Red team joined! Starting the game...");
+      if(onlineRole==="blue"){
+        onlineSocket.emit("start_game",{code:onlineRoom,game:onlineGameType,level:onlineLevel});
+        startOnlineGame(onlineGameType,onlineLevel);
+      }
+    });
+    onlineSocket.on("game_started",data=>{
+      onlineGameType=data.game;
+      onlineLevel=data.level;
+      startOnlineGame(onlineGameType,onlineLevel);
+    });
+    onlineSocket.on("score_update",data=>{
+      updateOnlineScore(data.blue,data.red);
+      if(data.finished){
+        finishOnline(data.winner,"A team reached a 5-point lead: "+data.blue+" – "+data.red+".");
+      }
+    });
+    onlineSocket.on("opponent_left",()=>{
+      if(!onlineFinished) onlineShowStatus("The other phone disconnected. You can return to the menu and create a new room.");
+    });
+    onlineSocket.on("server_error",data=>onlineShowStatus(data.message||"Online game error."));
+  }
+  return onlineSocket;
+}
+
+function createOnlineRoom(){
+  const socket=ensureOnlineSocket();
+  if(!socket)return;
+  onlineRole="blue";
+  onlineGameType=$("onlineGameSelect").value;
+  onlineLevel=1;
+  const create=()=>socket.emit("create_room",{game:onlineGameType,level:onlineLevel});
+  if(socket.connected) create(); else socket.once("connect",create);
+}
+
+function joinOnlineRoom(){
+  const socket=ensureOnlineSocket();
+  if(!socket)return;
+  const code=$("roomCodeInput").value.trim().toUpperCase();
+  if(!code){onlineShowStatus("Enter the room code first.");return;}
+  onlineRole="red";
+  const join=()=>socket.emit("join_room",{code});
+  if(socket.connected) join(); else socket.once("connect",join);
+}
+
+function startOnlineGame(game,lev){
+  onlineGameType=game;onlineLevel=lev;onlineBlue=0;onlineRed=0;onlineFinished=false;onlineQuestionIndex=0;
+  show("onlineGame");
+  loadOnlineQuestion();
+  updateOnlineScore(0,0);
+  $("onlineTeamTitle").textContent=onlineRole==="blue"?"🔵 Team Blue":"🔴 Team Red";
+  $("onlineOpponentStatus").textContent="Opponent is playing on the other phone.";
+}
+
+function buildOnlineQuestion(){
+  if(onlineGameType==="math"){
+    const old=level;level=onlineLevel;const item=shuffle(makeMath())[0];level=old;
+    return {prompt:"Solve the problem:",display:item[0],answer:item[1],options:optionsFor(item[1],"math")};
+  }
+  if(onlineGameType==="numbers"){
+    const old=level;level=onlineLevel;const item=shuffle(makeNumbers())[0];level=old;
+    return {prompt:"Which number is shown?",display:item[0],answer:item[1],options:optionsFor(item[1],"numbers")};
+  }
+  let source=BANK[onlineGameType]||BANK.letters;
+  const item=shuffle(source)[0], d=dataForForOnline(item,onlineGameType);
+  return {prompt:d[0],display:d[1],answer:d[3],options:d[2]};
+}
+
+function dataForForOnline(item,game){
+  const q=item[0],a=item[1];
+  if(game==="letters")return["What letter does this word start with?",q,optionsFor(a,"letters"),a];
+  if(game==="spelling")return["Choose the missing letter:",q,optionsFor(a,"spelling"),a];
+  if(game==="shapes")return["What is shown?",q,optionsFor(a,"shapes"),a];
+  return["What word is shown?",q,optionsFor(a,"reading"),a];
+}
+
+function loadOnlineQuestion(){
+  if(onlineFinished)return;
+  onlineCurrent=buildOnlineQuestion();
+  renderOnlineQuestion();
+  onlineQuestionIndex++;
+}
+
+function renderOnlineQuestion(){
+  if(!onlineCurrent)return;
+  $("onlinePrompt").textContent=onlineCurrent.prompt;
+  $("onlineQuestion").innerHTML=onlineGameType==="shapes"?(visualShape(onlineCurrent.display)||onlineCurrent.display):onlineCurrent.display;
+  $("onlineFeedback").textContent="";
+  const box=$("onlineAnswers");box.innerHTML="";
+  onlineCurrent.options.forEach(x=>{
+    const b=document.createElement("button");b.className="answer";b.type="button";b.textContent=x;
+    b.addEventListener("click",()=>answerOnline(b,x));
+    box.appendChild(b);
+  });
+}
+
+function answerOnline(button,picked){
+ if(onlineFinished||!onlineCurrent)return;
+ $("onlineAnswers").querySelectorAll("button").forEach(b=>b.disabled=true);
+ const ok=picked===onlineCurrent.answer;
+ button.classList.add(ok?"correct":"wrong");
+ playSound(ok?"correct":"wrong");
+ $("onlineFeedback").textContent=ok?"✅ Correct! Pull!":"❌ Correct answer: "+onlineCurrent.answer;
+ if(onlineSocket && onlineSocket.connected && onlineRoom){
+   onlineSocket.emit("answer",{code:onlineRoom,team:onlineRole,correct:ok});
+ }
+ if(!ok) setTimeout(()=>loadOnlineQuestion(),500);
+ else setTimeout(()=>{if(!onlineFinished)loadOnlineQuestion();},500);
+}
+
+function updateOnlineScore(b,r){
+  onlineBlue=b;onlineRed=r;
+  $("onlineBlueScore").textContent=b;$("onlineRedScore").textContent=r;
+  const d=b-r;
+  $("onlineBlueLead").textContent=d>0?"Lead +"+d:d===0?"Tie":"Behind "+Math.abs(d);
+  $("onlineRedLead").textContent=d<0?"Lead +"+Math.abs(d):d===0?"Tie":"Behind "+d;
+  const move=Math.max(-80,Math.min(80,d*14));
+  $("onlineRope").style.transform="translateX("+move+"px)";
+  $("onlineKnot").style.left="calc(50% + "+move+"px)";
+  $("onlineMarker").style.left="calc(50% + "+move+"px)";
+  $("onlineMeter").style.width=Math.max(12,Math.min(88,50+d*5))+"%";
+  const blueShift=d>0 ? Math.min(35,d*5) : 0;
+  const redShift=d<0 ? Math.min(35,Math.abs(d)*5) : 0;
+  $("onlineBlueChar1").style.transform="translateX("+blueShift+"px)";
+  $("onlineBlueChar2").style.transform="translateX("+blueShift+"px)";
+  $("onlineRedChar1").style.transform="translateX(-"+redShift+"px)";
+  $("onlineRedChar2").style.transform="translateX(-"+redShift+"px)";
+}
+
+function finishOnline(winner,text){
+  if(onlineFinished)return;
+  onlineFinished=true;
+  finish(winner,text);
+}
+
+function chooseGame(g){
+ selectedGame=g;
+ if(g==="custom"){renderCustomList();show("custom");return}
+ if(g==="online"){openOnlineMenu();return}
+ const names={letters:"🔤 Starting Letter",reading:"📖 Reading",spelling:"✏️ Spelling",math:"➕ Math",numbers:"🔢 Numbers",shapes:"🔺 Shapes & Colors"};
+ $("setupTitle").textContent=names[g];$("setupDesc").textContent="Choose a level. Every game ends when one team is 5 correct answers ahead.";
+ document.querySelectorAll(".level").forEach(x=>x.classList.remove("selected"));document.querySelector('[data-level="1"]').classList.add("selected");level=1;show("setup")
+}
+function makeMath(){
+ const a=[];for(let i=0;i<40;i++){let x,y,op;if(level===1){x=Math.floor(Math.random()*9)+1;y=Math.floor(Math.random()*9)+1;op="+"}else if(level===2){x=Math.floor(Math.random()*20)+1;y=Math.floor(Math.random()*20)+1;op=Math.random()<.5?"+":"-"}else if(level===3){x=Math.floor(Math.random()*12)+1;y=Math.floor(Math.random()*12)+1;op=Math.random()<.5?"+":"×"}else{x=Math.floor(Math.random()*60)+10;y=Math.floor(Math.random()*30)+1;op=Math.random()<.5?"+":"-"}let ans=op==="+"?x+y:op==="-"?x-y:x*y;a.push([x+" "+op+" "+y+" = ?",String(ans)])}return a
+}
+function makeNumbers(){const max=[10,20,50,100][level-1],a=[];for(let i=0;i<40;i++){const n=Math.floor(Math.random()*max);a.push([String(n),String(n)])}return a}
+function sourceItems(){
+ if(selectedGame==="math")return makeMath();
+ if(selectedGame==="numbers")return makeNumbers();
+ let a=(BANK[selectedGame]||BANK.letters).slice();
+ if(level>=2&&selectedGame==="letters")a=a.concat(BANK.letters);
+ if(level>=2&&selectedGame==="reading")a=a.concat(BANK.letters.map(x=>[x[0],x[0]]));
+ return shuffle(a)
+}
+function optionsFor(answer,type){
+ if(type==="letters"||type==="spelling"){const abc="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");return shuffle([answer,...shuffle(abc.filter(x=>x!==answer)).slice(0,3)])}
+ if(type==="shapes"){return shuffle([answer,...shuffle(["CIRCLE","SQUARE","TRIANGLE","STAR","RECTANGLE","OVAL","RED","BLUE","GREEN","YELLOW"].filter(x=>x!==answer)).slice(0,3)])}
+ const nums=["0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","24","25","30","36","40","50","60","70","80","90","100"];
+ return shuffle([answer,...shuffle(nums.filter(x=>x!==answer)).slice(0,3)])
+}
+
+function visualShape(name){
+  const n=String(name).toUpperCase();
+  if(n==="CIRCLE")return '<svg viewBox="0 0 180 130" aria-label="Circle"><circle cx="90" cy="65" r="50" fill="#6fa8ff"/></svg>';
+  if(n==="SQUARE")return '<svg viewBox="0 0 180 130" aria-label="Square"><rect x="42" y="17" width="96" height="96" rx="8" fill="#ffbf5b"/></svg>';
+  if(n==="TRIANGLE")return '<svg viewBox="0 0 180 130" aria-label="Triangle"><polygon points="90,12 150,112 30,112" fill="#75c878"/></svg>';
+  if(n==="RECTANGLE")return '<svg viewBox="0 0 180 130" aria-label="Rectangle"><rect x="22" y="28" width="136" height="74" rx="8" fill="#b184ff"/></svg>';
+  if(n==="OVAL")return '<svg viewBox="0 0 180 130" aria-label="Oval"><ellipse cx="90" cy="65" rx="65" ry="43" fill="#ff8aa1"/></svg>';
+  if(n==="STAR")return '<svg viewBox="0 0 180 130" aria-label="Star"><polygon points="90,8 106,49 150,50 115,76 127,118 90,93 53,118 65,76 30,50 74,49" fill="#ffd34f"/></svg>';
+  const colors={RED:"#ef5b5b",BLUE:"#5a8ff5",GREEN:"#5ec776",YELLOW:"#f5d34e"};
+  if(colors[n])return '<svg viewBox="0 0 180 130" aria-label="'+n+' color"><circle cx="90" cy="65" r="48" fill="'+colors[n]+'"/></svg>';
+  return null;
+}
+
+function dataFor(item){
+ const q=item[0],a=item[1];
+ if(selectedGame==="letters")return["What letter does this word start with?",q,optionsFor(a,"letters"),a];
+ if(selectedGame==="spelling")return["Choose the missing letter:",q,optionsFor(a,"spelling"),a];
+ if(selectedGame==="math")return["Solve the problem:",q,optionsFor(a,"math"),a];
+ if(selectedGame==="numbers")return["Which number is shown?",q,optionsFor(a,"numbers"),a];
+ if(selectedGame==="shapes")return["What is shown?",q,optionsFor(a,"shapes"),a];
+ return["What word is shown?",q,optionsFor(a,"reading"),a]
+}
+function startClassic(){
+ let items=shuffle(sourceItems());while(items.length<20)items=items.concat(shuffle(sourceItems()));items=items.slice(0,20);
+ classicBlue=0;classicRed=0;classicFinished=false;classicAnswered={blue:false,red:false};classicQuestions={blue:null,red:null};classicPool=items;classicIndex=0;show("classic");loadClassic("blue");loadClassic("red");updateScores();setTimeout(announceInitialClassicQuestions,80)
+}
+let classicPool=[],classicIndex=0;
+function loadClassic(team){
+ if(classicFinished)return;
+ if(classicIndex>=classicPool.length)classicIndex=0;
+ const item=classicPool[(classicIndex+(team==="red"?1:0))%classicPool.length],d=dataFor(item);
+ classicQuestions[team]={answer:d[3],prompt:d[0],display:d[1]};classicAnswered[team]=false;
+ $(team==="blue"?"bluePrompt":"redPrompt").textContent=d[0];
+ const questionNode=$(team==="blue"?"blueQuestion":"redQuestion");
+ if(selectedGame==="shapes") setShapeVisual(questionNode,d[1]); else questionNode.textContent=d[1];
+ renderButtons(team,d[2],d[3],answerClassic)
+ speakIfEnabled((team==="blue"?"Blue team. ":"Red team. ")+d[0]+" "+d[1],false)
+}
+function renderButtons(team,opts,correct,handler){
+ const box=$(team==="blue"?"blueAnswers":"redAnswers");box.innerHTML="";
+ opts.forEach(x=>{const b=document.createElement("button");b.className="answer";b.type="button";b.textContent=x;b.addEventListener("click",()=>handler(team,b,x,correct));box.appendChild(b)})
+}
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+function answerClassic(team,button,picked,correct){
+ if(classicFinished||classicAnswered[team])return;classicAnswered[team]=true;
+ $(team==="blue"?"blueAnswers":"redAnswers").querySelectorAll("button").forEach(b=>b.disabled=true);
+ const ok=picked===correct;button.classList.add(ok?"correct":"wrong");playSound(ok?"correct":"wrong");
+ const fb=$(team==="blue"?"blueFeedback":"redFeedback");fb.textContent=ok?"✅ Correct! Pull!":"❌ Correct answer: "+correct;
+ if(ok){if(team==="blue")classicBlue++;else classicRed++}
+ updateScores();updateRope();
+ if(checkFiveLead(classicBlue,classicRed)){finish(team==="blue"&&classicBlue>classicRed?"Blue":"Red","A team reached a 5-point lead: "+classicBlue+" – "+classicRed+".");return}
+ setTimeout(()=>{
+  classicIndex++;
+  loadClassic(team);
+  speakCurrentClassic(team,true);
+},650)
+}
+function setShapeVisual(node,name){
+ node.className="question shape-question";
+ const key=String(name).toUpperCase();
+ const shapeMap={CIRCLE:"circle",SQUARE:"square",TRIANGLE:"triangle",RECTANGLE:"rectangle",OVAL:"oval",STAR:"star"};
+ const colorMap={RED:"color-red",BLUE:"color-blue",GREEN:"color-green",YELLOW:"color-yellow"};
+ const cls=shapeMap[key];
+ if(cls){
+   node.innerHTML='<div class="shape-display" aria-label="'+key+'"><span class="shape '+cls+'"></span></div>';
+ }else if(colorMap[key]){
+   node.innerHTML='<div class="shape-display" aria-label="'+key+'"><span class="color-swatch '+colorMap[key]+'"></span></div>';
+ }else{
+   node.textContent=name;
+ }
+}
+function speakCurrentClassic(team,forceCancel){
+ if(!("speechSynthesis" in window)||!$("soundToggle").checked)return;
+ const q=classicQuestions[team];
+ if(!q)return;
+ if(forceCancel)speechSynthesis.cancel();
+ const prefix=team==="blue"?"Blue team. ":"Red team. ";
+ const text=prefix+q.prompt+(q.display?" "+q.display:"");
+ const u=new SpeechSynthesisUtterance(text);
+ u.rate=.86;u.pitch=1.04;
+ speechSynthesis.speak(u);
+}
+function announceInitialClassicQuestions(){
+ if(!("speechSynthesis" in window)||!$("soundToggle").checked)return;
+ speechSynthesis.cancel();
+ const first=classicQuestions.blue,second=classicQuestions.red;
+ const u1=new SpeechSynthesisUtterance("Blue team. "+first.prompt+" "+first.display);
+ const u2=new SpeechSynthesisUtterance("Red team. "+second.prompt+" "+second.display);
+ u1.rate=.86;u1.pitch=1.04;u2.rate=.86;u2.pitch=1.04;
+ speechSynthesis.speak(u1);speechSynthesis.speak(u2);
+}
+function updateScores(){
+ const b=classicBlue,r=classicRed;
+ $("classicBlue").textContent=b;$("classicRed").textContent=r;
+ const bp=$("blueLead"),rp=$("redLead"),d=b-r;
+ bp.textContent=d>0?"Lead +"+d:d===0?"Tie":"Behind "+Math.abs(d);
+ rp.textContent=d<0?"Lead +"+Math.abs(d):d===0?"Tie":"Behind "+d;
+}
+function checkFiveLead(b,r){return Math.abs(b-r)>=5}
+function updateRope(){
+ const b=classicBlue,r=classicRed,d=b-r;
+ const move=Math.max(-70,Math.min(70,d*13));
+ const pct=Math.max(15,Math.min(85,50+d*5));
+ $("classicRope").style.transform="translateX("+move+"px)";
+ $("classicKnot").style.left="calc(50% + "+move+"px)";
+ $("classicMarker").style.left="calc(50% + "+move+"px)";
+ $("classicMeter").style.width=pct+"%";
+ const blueShift=d>0 ? Math.min(34,d*5) : 0;
+ const redShift=d<0 ? Math.min(34,Math.abs(d)*5) : 0;
+ document.querySelectorAll("#classic .leftchar").forEach(c=>c.style.transform="translateX("+blueShift+"px)");
+ document.querySelectorAll("#classic .redchar").forEach(c=>c.style.transform="translateX(-"+redShift+"px)");
+}
+function finish(winner,text){
+ const title=winner==="Blue"?"🏆 🔵 Team Blue Wins!":"🏆 🔴 Team Red Wins!";
+ $("resultTitle").textContent=title;$("resultText").textContent=text;show("result");playSound("win")
+}
+function speakIfEnabled(text,force){
+ if(!$("soundToggle").checked&&!force)return;
+ if(!("speechSynthesis"in window))return;
+ speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=.88;u.pitch=1.05;speechSynthesis.speak(u)
+}
+function playSound(kind){
+ if(!$("soundToggle").checked)return;
+ const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=new C();const n=c.currentTime;
+ const tone=(f,t,d,v,type="sine")=>{const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.03)};
+ if(kind==="correct"){tone(660,n,.12,.13);tone(880,n+.1,.16,.13)}else if(kind==="wrong"){tone(230,n,.18,.12,"sawtooth");tone(150,n+.13,.2,.1,"sawtooth")}else{tone(523,n,.13,.14);tone(659,n+.12,.13,.14);tone(784,n+.24,.13,.15);tone(1047,n+.36,.25,.16)}
+}
+function renderCustomList(){
+ const box=$("customList");box.innerHTML="";
+ if(customQuestions.length===0){box.innerHTML='<div class="muted">No custom questions yet.</div>';return}
+ customQuestions.forEach((q,i)=>{const row=document.createElement("div");row.className="custom-item";row.innerHTML="<span><b>"+escapeHtml(q.question)+"</b> → "+escapeHtml(q.answer)+"</span><button class='btn secondary' type='button'>Remove</button>";row.querySelector("button").addEventListener("click",()=>{customQuestions.splice(i,1);renderCustomList()});box.appendChild(row)})
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function startCustom(){
+ if(customQuestions.length<1){alert("Please add at least one custom question.");return}
+ selectedGame="custom";level=1;let items=shuffle(customQuestions).map(q=>[q.question,q.answer,q.choices]);while(items.length<20)items=items.concat(shuffle(items));classicPool=items.slice(0,20);classicBlue=0;classicRed=0;classicFinished=false;classicAnswered={blue:false,red:false};classicIndex=0;show("classic");loadCustomClassic("blue");loadCustomClassic("red");updateScores();setTimeout(announceInitialClassicQuestions,80)
+}
+function loadCustomClassic(team){
+ const idx=(classicIndex+(team==="red"?1:0))%classicPool.length,q=classicPool[idx];classicQuestions[team]={answer:q[1],prompt:q[0],display:"",custom:true};classicAnswered[team]=false;
+ $(team==="blue"?"bluePrompt":"redPrompt").textContent=q[0];$(team==="blue"?"blueQuestion":"redQuestion").textContent="";
+ const box=team==="blue"?$("blueAnswers"):$("redAnswers");box.innerHTML="";shuffle(q[2]).forEach(x=>{const b=document.createElement("button");b.className="answer";b.type="button";b.textContent=x;b.addEventListener("click",()=>answerClassic(team,b,x,q[1]));box.appendChild(b)})
+}
+const originalLoadClassic=loadClassic;
+loadClassic=function(team){
+ if(selectedGame==="custom"){loadCustomClassic(team);return}
+ originalLoadClassic(team)
+}
+$("soundToggle").addEventListener("change",()=>{
+  if(!$("soundToggle").checked && "speechSynthesis" in window) speechSynthesis.cancel();
+});
+$("homeBtn").addEventListener("click",()=>{if("speechSynthesis" in window)speechSynthesis.cancel();show("home")});
+$("resultHome").addEventListener("click",()=>{if("speechSynthesis" in window)speechSynthesis.cancel();show("home")});
+document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>chooseGame(c.dataset.game)));
+
+$("createRoomBtn").addEventListener("click",setupOnlineCreate);
+$("joinRoomBtn").addEventListener("click",setupOnlineJoin);
+$("createOnlineBtn").addEventListener("click",createOnlineRoom);
+$("joinOnlineBtn").addEventListener("click",joinOnlineRoom);
+document.querySelectorAll("[data-online-level]").forEach(b=>b.addEventListener("click",()=>{
+  onlineLevel=Number(b.dataset.onlineLevel);
+  document.querySelectorAll("[data-online-level]").forEach(x=>x.classList.toggle("selected",x===b));
+}));
+
+document.querySelectorAll(".level").forEach(b=>b.addEventListener("click",()=>{level=Number(b.dataset.level);document.querySelectorAll(".level").forEach(x=>x.classList.toggle("selected",x===b))}));
+$("startClassicBtn").addEventListener("click",startClassic);
+$("playCustomBtn").addEventListener("click",startCustom);
+$("customForm").addEventListener("submit",e=>{
+ e.preventDefault();const q=$("customQuestion").value.trim(),a=$("customA").value.trim(),choices=[$("customA").value.trim(),$("customB").value.trim(),$("customC").value.trim(),$("customD").value.trim()];
+ if(!q||choices.some(x=>!x)){alert("Please fill in the question and all four answers.");return}
+ customQuestions.push({question:q,answer:a,choices});e.target.reset();renderCustomList()
+});
+document.querySelectorAll(".card").forEach(c=>c.addEventListener("keydown",e=>{if(e.key==="Enter")c.click()}));
+</script>
+</body>
+</html>
